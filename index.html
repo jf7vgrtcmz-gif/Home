@@ -192,8 +192,14 @@ body{font-family:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Display","Helv
 .cal .head p.d{flex:0 0 100%;max-width:none;white-space:normal}
 .cal .head p.cdn{margin-top:8px;font:500 22px/1.15 "Playfair Display","New York",Georgia,serif;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-variant-numeric:lining-nums}
 .cal>div:first-child{padding-bottom:34px}
-@media (min-width:900px) and (orientation:landscape){
- html,body{height:100%;overflow:hidden}
+.wh{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;font-size:12px;font-weight:600;background:var(--glass2);border:1px solid var(--line);opacity:.45;margin-right:4px;color:var(--ink)}
+.wh.in{opacity:1;background:linear-gradient(160deg,var(--accent),var(--accent2));color:var(--onacc)}
+dialog select{padding:8px;border-radius:12px;border:1px solid var(--track);background:var(--glass2);color:var(--ink);font:16px -apple-system,Arial,sans-serif;margin-left:6px}
+dialog input[type=number]{width:70px;padding:8px;border-radius:12px;border:1px solid var(--track);background:var(--glass2);color:var(--ink);font:16px -apple-system,Arial,sans-serif;margin:10px 6px 0 0}
+@media (min-width:700px){
+ html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:pan-x}
+ #pg{touch-action:pan-x}
+ input[type=range]{touch-action:none}
  .wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;padding:8px 16px 10px;max-width:none}
  header{padding:0 6px 8px;flex:none}
  #pg{flex:1;min-height:0;padding-bottom:0;overflow-y:hidden}
@@ -217,7 +223,7 @@ dialog textarea{min-height:100px}
 <div id="deco"></div><div class="wrap">
 <header>
   <div class="brand"><svg width="30" height="30" viewBox="0 0 24 24"><path d="M3 11l9-7.5L21 11M5.5 9.5V20h13V9.5"/></svg>Home<span class="s">Dashboard</span></div>
-  <div class="status"><span id="hdate" hidden></span><span id="htime" hidden></span><span class="tw"><button id="theme" aria-label="Change theme"></button><div id="tp" hidden></div></span><button id="gear" aria-label="Settings">⚙︎</button></div>
+  <div class="status"><span id="hdate" hidden></span><span id="htime" hidden></span><span id="who"></span><span class="tw"><button id="theme" aria-label="Change theme"></button><div id="tp" hidden></div></span><button id="gear" aria-label="Settings">⚙︎</button></div>
 </header>
 
 <div id="pg"><div class="pgp"><main class="grid">
@@ -257,7 +263,7 @@ dialog textarea{min-height:100px}
 <label>Home Assistant address</label><input type="text" id="hu" placeholder="http://homeassistant.local:8123" autocapitalize="off" autocorrect="off">
 <label>Long-lived access token</label><input type="password" id="ht" autocomplete="off">
 <details><summary style="margin-top:14px;cursor:pointer;color:var(--sub)">Choose devices (blank picks automatically)</summary><div id="he"></div></details>
-<textarea id="hv" hidden></textarea><label>Night mode starts</label><input type="time" id="nm1"><label>Night mode ends</label><input type="time" id="nm2"><div class="row" style="margin-top:10px"><button class="btn" id="nmb">Run night mode now</button></div>
+<textarea id="hv" hidden></textarea><label class="ck"><input type="checkbox" id="nmA"> Follow the seasons (night mode starts after sunset)</label><label>Wake-up time, weekdays (morning mode)</label><input type="time" id="wk1"><label>Wake-up time, weekends</label><input type="time" id="wk2"><label>Night mode starts (if not following seasons)</label><input type="time" id="nm1"><label>Night mode ends</label><input type="time" id="nm2"><div class="row" style="margin-top:10px"><button class="btn" id="nmb">Run night mode now</button><button class="btn" id="arb">Test arriving home</button></div>
 <div class="row"><button class="btn p" id="hs">Save &amp; connect</button><button class="btn" id="hd">Disconnect</button><button class="btn" id="hc">Close</button></div></dialog>
 </div>
 
@@ -341,7 +347,7 @@ function conn(){if(!C.url||!C.token)return;try{if(ws){ws.onclose=null;ws.close()
   if(d.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:C.token}));
   else if(d.type==='auth_ok'){setSt('Connected');send({type:'get_states'},function(r){r.result.forEach(function(s){ST[s.entity_id]=s});apply(1);hcal()});send({type:'subscribe_events',event_type:'state_changed'})}
   else if(d.type==='auth_invalid'){halt=1;setSt('That token wasn’t accepted. Create a new one in your Home Assistant profile.')}
-  else if(d.type==='event'){var n=d.event.data.new_state;if(n){ST[n.entity_id]=n;if(/^(lock|alarm_control_panel|climate|cover|weather|light)\./.test(n.entity_id))apply()}}
+  else if(d.type==='event'){var n=d.event.data.new_state;if(n){ST[n.entity_id]=n;if(/^(lock|alarm_control_panel|climate|cover|weather|light|person|binary_sensor)\./.test(n.entity_id))apply()}}
   else if(d.id&&cb[d.id]){cb[d.id](d);delete cb[d.id]}};
  ws.onclose=function(){if(!halt)setTimeout(conn,5000)};
  ws.onerror=function(){setSt('Can’t reach Home Assistant. Open this page from your Home Assistant address.')}}
@@ -352,7 +358,7 @@ function apply(init){
  var c=E('climate','climate');if(c&&c.attributes.temperature!=null)S.temp=+c.attributes.temperature;
  var g=E('garage','cover');if(g)S.garage=({open:'Open',closed:'Closed',opening:'Opening',closing:'Closing'})[g.state]||S.garage;
  var w=window.LW?null:E('weather','weather');if(w){$('wt').textContent=Math.round(w.attributes.temperature)+'°';var s=w.state;$('wc').textContent=({partlycloudy:'Partly cloudy','clear-night':'Clear night'})[s]||s.replace(/-/g,' ').replace(/^./,function(x){return x.toUpperCase()})}
- if(init)aud();syncL();secR();clR();gR();scR()}
+ if(init)aud();syncL();secR();clR();gR();scR();who()}
 function aud(){var m=Object.keys(ST).filter(function(x){return x.indexOf('media_player.')===0}).slice(0,4);if(!m.length)return;
  $('audio').innerHTML=m.map(function(x,i){var s=ST[x],v=Math.round((s.attributes.volume_level||0)*100);return '<div class="au">'+ic(['sofa','fork','bed','sofa'][i])+'<span>'+esc(s.attributes.friendly_name||x)+'</span><input type="range" min="0" max="100" value="'+v+'" data-e="'+x+'"><output>'+v+'%</output></div>'}).join('');
  [].forEach.call(document.querySelectorAll('#audio input'),function(r){fill(r);r.oninput=function(){r.nextSibling.textContent=r.value+'%';fill(r);call('media_player','volume_set',{entity_id:r.dataset.e,volume_level:r.value/100})}})}
@@ -394,10 +400,10 @@ function rt(n){var r=S.rooms[n];return '<button class="tile'+(r.on?' on':'')+'" 
 function scR(){$('scenes').innerHTML=RN.slice(0,4).map(rt).join('')+'<button class="tile" data-n="">'+ic('more')+'<span>More lighting options</span></button>';
  [].forEach.call($('scenes').children,function(b){b.onclick=function(e){e.stopPropagation();var n=b.dataset.n;if(!n){lList();$('ldlg').showModal();return}S.rooms[n].on=!S.rooms[n].on;lset(n);scR()}})}
 function lList(){$('lbody').innerHTML='<h3>Lighting</h3><p class="d">Choose a room</p><div class="rl">'+RN.map(rt).join('')+'</div><div class="row"><button class="btn" id="lx">Done</button></div>'}
-function lRoom(n){var r=S.rooms[n];cur=n;$('lbody').innerHTML='<button class="btn" id="lb">‹ Rooms</button><h3 style="margin-top:14px">'+n+'</h3><p class="d">'+(r.on?'Lights are on · '+r.b+'%':'Lights are off')+'</p><button class="btn p lbig" id="lt">'+(r.on?'Turn lights off':'Turn lights on')+'</button><div class="modes">'+MD.map(function(m){return '<button class="tile'+(r.m===m[0]&&r.on?' on':'')+'" data-m="'+m[0]+'">'+m[0]+'</button>'}).join('')+'</div><label>Brightness <span id="bv">'+r.b+'%</span></label><input type="range" id="lbr" min="1" max="100" value="'+r.b+'"><div class="row"><button class="btn" id="lx">Done</button></div>';fill($('lbr'))}
+function lRoom(n){var r=S.rooms[n];cur=n;$('lbody').innerHTML='<button class="btn" id="lb">‹ Rooms</button><h3 style="margin-top:14px">'+n+'</h3><p class="d">'+(r.on?'Lights are on · '+r.b+'%':'Lights are off')+'</p><button class="btn p lbig" id="lt">'+(r.on?'Turn lights off':'Turn lights on')+'</button><div class="modes">'+(MDR[n]||MDR.d).map(function(m){return '<button class="tile'+(r.m===m[0]&&r.on?' on':'')+'" data-m="'+m[0]+'">'+m[0]+'</button>'}).join('')+'</div><label>Brightness <span id="bv">'+r.b+'%</span></label><input type="range" id="lbr" min="1" max="100" value="'+r.b+'"><div class="row"><button class="btn" id="lx">Done</button></div>';fill($('lbr'))}
 $('lbody').onclick=function(e){var b=e.target.closest('button');if(!b)return;var r=S.rooms[cur];
  if(b.id==='lx'){$('ldlg').close();return}if(b.id==='lb'){lList();return}
- if(b.dataset.m){r.m=b.dataset.m;r.b=MD.filter(function(m){return m[0]===r.m})[0][1];r.on=true;lset(cur);scR();lRoom(cur);return}
+ if(b.dataset.m){r.m=b.dataset.m;r.b=(MDR[cur]||MDR.d).filter(function(m){return m[0]===r.m})[0][1];r.on=true;lset(cur);scR();lRoom(cur);return}
  if(b.id==='lt'){r.on=!r.on;lset(cur);scR();lRoom(cur);return}
  if(b.dataset.n){lRoom(b.dataset.n)}};
 $('lbody').oninput=function(e){if(e.target.id!=='lbr')return;var r=S.rooms[cur];r.b=+e.target.value;r.on=true;r.m='';$('bv').textContent=r.b+'%';fill(e.target)};
@@ -425,15 +431,15 @@ function cRender(){var y=cm.getFullYear(),m=cm.getMonth(),off=(new Date(y,m,1).g
  for(var i=0;i<off;i++)h+='<span></span>';
  for(var d=1;d<=dim;d++){var k=y+'-'+pad(m+1)+'-'+pad(d);h+='<button class="cd'+(k===td?' td':'')+(k===sel?' sl':'')+'" data-d="'+k+'">'+d+(all(k).length?'<u></u>':'')+'</button>'}
  h+='</div>';
- if(sel)h+='<div class="cs"><b>'+new Date(sel+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'</b>'+(all(sel).map(function(e){return '<div class="ce"><span>'+(e.big?'★ ':'')+(e.h?e.h+'  ':'')+esc(e.t)+(e.yr?' ↻':'')+'</span>'+(e.ha?'':'<button class="x" data-k="'+e.d+'" data-i="'+e.i+'" aria-label="Delete event">✕</button>')+'</div>'}).join('')||'<p class="d">No events. Add one below.</p>')+'<div class="row"><input type="text" id="ct" placeholder="Type an event" style="flex:1;min-width:0"><input type="time" id="ctm"><button class="btn p" id="ca">Add</button></div><div><label class="ck"><input type="checkbox" id="cbg"> ★ Big event</label><label class="ck"><input type="checkbox" id="cyr"> Repeat every year (keeps forever)</label></div></div>';
+ if(sel)h+='<div class="cs"><b>'+new Date(sel+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'</b>'+(all(sel).map(function(e){return '<div class="ce"><span>'+(e.big?'★ ':'')+(e.h?e.h+'  ':'')+esc(e.t)+'</span>'+(e.ha?'':'<button class="x" data-k="'+e.d+'" data-i="'+e.i+'" aria-label="Delete event">✕</button>')+'</div>'}).join('')||'<p class="d">No events. Add one below.</p>')+'<div class="row"><input type="text" id="cevt" placeholder="Type an event" style="flex:1;min-width:0"><input type="time" id="ctm"><button class="btn p" id="ca">Add</button></div><div><label class="ck"><input type="checkbox" id="cbg"> ★ Big event</label><label class="ck">Repeats <select id="crp"><option value="">never</option><option value="w">every week</option><option value="m">every month</option><option value="y">every year (birthdays)</option></select></label><label class="ck"><input type="checkbox" id="chl"> 🏝 Holiday (house looks lived in)</label><input type="number" id="chd" min="1" max="60" value="7"> days</div></div>';
  h+='<div class="row"><button class="btn" id="cx">Done</button></div>';$('cbody').innerHTML=h}
 $('cbody').onclick=function(e){var b=e.target.closest('button');if(!b)return;
  if(b.dataset.d){sel=b.dataset.d;cRender();return}
  if(b.id==='cp0'){cm.setMonth(cm.getMonth()-1);cRender();return}if(b.id==='cn0'){cm.setMonth(cm.getMonth()+1);cRender();return}
  if(b.id==='cx'){$('cdlg').close();return}
- if(b.id==='ca'){var v=$('ct').value.trim();if(!v)return;(S.cal[sel]=S.cal[sel]||[]).push({t:v,h:$('ctm').value,big:$('cbg').checked||$('cyr').checked,yr:$('cyr').checked});save();upR();cRender();return}
+ if(b.id==='ca'){var v=$('cevt').value.trim();if(!v)return;(S.cal[sel]=S.cal[sel]||[]).push({t:v,h:$('ctm').value,big:$('cbg').checked||$('chl').checked,rp:$('crp').value,yr:$('crp').value==='y',hol:$('chl').checked?Math.max(1,+$('chd').value||7):0});save();upR();cRender();return}
  if(b.className==='x'){var kk=b.dataset.k||sel;S.cal[kk].splice(+b.dataset.i,1);if(!S.cal[kk].length)delete S.cal[kk];save();upR();cRender()}};
-$('cbody').onkeydown=function(e){if(e.key==='Enter'&&e.target.id==='ct')$('ca').click()};
+$('cbody').onkeydown=function(e){if(e.key==='Enter'&&e.target.id==='cevt')$('ca').click()};
 function openC(){if($('cdlg').open)return;cm=new Date();cm.setDate(1);sel=ymd(new Date());cRender();$('cdlg').showModal()}
 $('cdlg').addEventListener('close',upR);document.querySelector('.cal').addEventListener('click',openC);$('addev').onclick=function(e){e.stopPropagation();openC()};
 /* themes */
@@ -496,7 +502,7 @@ function goNight(){
  var w=E('weather','weather'),o=!window.LW&&w&&w.attributes.temperature!=null?+w.attributes.temperature:parseFloat($('wt').textContent),t=o<10?19:o<=22?18:22;
  setT(t);ctp();secR();scR();save();
  toast('🌙 Night mode on · lights dimmed · doors locked · alarm armed · climate '+t+'° (outside '+Math.round(o)+'°)')}
-function nightChk(){var d=new Date(),m=d.getHours()*60+d.getMinutes(),a=tm(S.nm[0]),b=tm(S.nm[1]),on=a>b?(m>=a||m<b):(m>=a&&m<b);if(!on)return;
+function nightChk(){var d=new Date(),m=d.getHours()*60+d.getMinutes(),w=nwin(),a=w[0],b=w[1],on=a>b?(m>=a||m<b):(m>=a&&m<b);if(!on)return;
  var k=ymd(a>b&&m<b?new Date(+d-864e5):d);if(S.nmRan!==k){S.nmRan=k;goNight()}}
 function fillNm(){$('nm1').value=S.nm[0];$('nm2').value=S.nm[1]}
 $('gear').addEventListener('click',fillNm);
@@ -523,9 +529,9 @@ var ci=0;
 function cdItems(){var n=new Date(),a=new Date(n.getFullYear(),n.getMonth(),n.getDate()),t=S.theme,l=[],r=[];
  if(t==='xmas'||t==='halloween'){var m=t==='xmas'?[11,25]:[9,31],d=new Date(n.getFullYear(),m[0],m[1]);if(d<a)d=new Date(n.getFullYear()+1,m[0],m[1]);var k=Math.round((d-a)/864e5),nm=t==='xmas'?'Christmas':'Halloween';
   l.push((t==='xmas'?'🎄 ':'🎃 ')+(k===0?'It’s '+nm+' Day!':k+(k===1?' day':' days')+' until '+nm))}
- Object.keys(S.cal).forEach(function(k){S.cal[k].forEach(function(e){if(!e.big)return;var d=e.yr?nxt(k):k;if(d<ymd(a))return;var dd=Math.round((new Date(d+'T00:00:00')-a)/864e5);r.push([dd,'★ '+e.t+' · '+(dd===0?'today!':dd===1?'tomorrow':dd+' days')])})});
+ Object.keys(S.cal).forEach(function(k){S.cal[k].forEach(function(e){if(!e.big&&!e.yr)return;var d=e.yr?nxt(k):k;if(d<ymd(a))return;var dd=Math.round((new Date(d+'T00:00:00')-a)/864e5);r.push([dd,(dd<=7&&bd(e)?'🎂 ':e.hol?'🏝 ':e.big?'★ ':'')+e.t+' · '+(dd===0?'today!':dd===1?'tomorrow':dd+' days')+(dd<=7&&bd(e)?' 🎉🎈':'')])})});
  r.sort(function(x,y){return x[0]-y[0]});r.slice(0,4).forEach(function(x){l.push(x[1])});return l}
-function cd(){var p=document.querySelector('.cal .head p.d'),l=cdItems();p.className=l.length?'d cdn':'d';p.textContent=l.length?l[ci%l.length]:'Upcoming events & reminders'}
+function cd(){var p=document.querySelector('.cal .head p.d'),l=cdItems();if(holOn())l.unshift('🏝 Holiday mode on');p.className=l.length?'d cdn':'d';p.textContent=l.length?l[ci%l.length]:'Upcoming events & reminders'}
 setInterval(function(){ci++;cd()},4000);cd();
 /* away mode */
 S.away=!!S.away;
@@ -549,17 +555,126 @@ var WI={sc:'<circle cx="17" cy="8" r="3.6" style="stroke:#e8923a;fill:#f4a64a"/>
 function wk(c,d){return c<=1?(d?'sun':'moon'):c===2?(d?'sc':'cloud'):((c>=51&&c<=67)||(c>=80&&c<=82)||c>=95)?'rain':'cloud'}
 function wtxt(c){return c===0?'Clear':c===1?'Mainly clear':c===2?'Partly cloudy':c===3?'Overcast':c<=48?'Fog':c<=57?'Drizzle':c<=67?'Rain':c<=77?'Snow':c<=82?'Showers':c<=86?'Snow showers':'Thunderstorm'}
 function getW(){
- function go(la,lo){fetch('https://api.open-meteo.com/v1/forecast?latitude='+la+'&longitude='+lo+'&current=temperature_2m,weather_code,is_day&hourly=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max&timezone=auto&forecast_days=2').then(function(r){return r.json()}).then(function(d){
+ function go(la,lo){fetch('https://api.open-meteo.com/v1/forecast?latitude='+la+'&longitude='+lo+'&current=temperature_2m,weather_code,is_day&hourly=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,sunrise,sunset&timezone=auto&forecast_days=2').then(function(r){return r.json()}).then(function(d){
   var c=d.current,h=d.hourly,i=Math.max(0,h.time.indexOf(c.time.slice(0,13)+':00')),u=d.daily.uv_index_max[0],ul=u<3?'Low':u<6?'Moderate':u<8?'High':u<11?'Very high':'Extreme';
-  window.LW=1;$('wt').textContent=Math.round(c.temperature_2m)+'°';$('wc').textContent=wtxt(c.weather_code);
+  window.LW=1;S.sun=[hm(d.daily.sunrise[0]),hm(d.daily.sunset[0])];save();$('wt').textContent=Math.round(c.temperature_2m)+'°';$('wc').textContent=wtxt(c.weather_code);
   document.querySelector('.now svg').innerHTML=WI[wk(c.weather_code,c.is_day)];
   var m=document.querySelectorAll('.meta>div');m[0].innerHTML='<b>High '+Math.round(d.daily.temperature_2m_max[0])+'°</b><b>Low '+Math.round(d.daily.temperature_2m_min[0])+'°</b>';m[1].textContent='Rain '+d.daily.precipitation_probability_max[0]+'%   UV '+Math.round(u)+' '+ul;
   $('hourly').innerHTML=[0,1,2,3,4].map(function(k){var j=i+k,hh=+h.time[j].slice(11,13),kk=wk(h.weather_code[j],h.is_day[j]);return '<div class="hr">'+(k?(hh%12||12)+(hh<12?' am':' pm'):'Now')+ic(kk==='sc'?'cloud':kk)+'<b>'+Math.round(h.temperature_2m[j])+'°</b></div>'}).join('')}).catch(function(){})}
  if(navigator.geolocation)navigator.geolocation.getCurrentPosition(function(p){S.loc=[p.coords.latitude,p.coords.longitude];save();go(S.loc[0],S.loc[1])},function(){if(S.loc)go(S.loc[0],S.loc[1])},{maximumAge:600000,timeout:15000});else if(S.loc)go(S.loc[0],S.loc[1])}
 getW();setInterval(getW,900000);
-aud();upR();if(C.url&&C.token)conn();nightChk();
+/* lighting modes that fit each room */
+var MDR={d:[['Bright',100],['Evening',50],['Night light',10]],
+ 'Living room':[['Bright',100],['Relax',40],['Movie night',15],['Reading',70]],
+ 'Kitchen':[['Bright',100],['Cooking',85],['Dining',50],['Night light',10]],
+ 'Garage':[['Bright',100],['Work',90],['Night light',10]],
+ 'Outdoor':[['Security',100],['Garden',50],['Porch',35]],
+ 'Bedroom':[['Bright',100],['Reading',60],['Relax',35],['Bedtime',10]],
+ 'Bathroom':[['Bright',100],['Everyday',70],['Night light',10]],
+ 'Hallway':[['Bright',100],['Evening',50],['Night light',10]],
+ 'Office':[['Focus',100],['Video call',80],['Relax',40]]};
+function bd(e){return /birthday|bday|b-day/i.test(e.t)}
+/* seasons: sunrise/sunset, night + morning modes */
+function hm(s){return (+s.slice(11,13))*60+(+s.slice(14,16))}
+function nowM(){var d=new Date();return d.getHours()*60+d.getMinutes()}
+function sunT(){if(S.sun)return S.sun;var n=new Date(),doy=Math.floor((n-new Date(n.getFullYear(),0,0))/864e5),sg=(S.loc&&S.loc[0]<0)?-1:1,d=Math.cos((doy-172)*2*Math.PI/365)*sg;return [Math.round((6.4-d*1.65)*60),Math.round((18.6+d*2.75)*60)]}
+function nwin(){var s=sunT(),au=S.nmAuto!==false;return [au?Math.min(1410,Math.max(1260,s[1]+180)):tm(S.nm[0]),au?tm(S.wake||'06:30'):tm(S.nm[1])]}
+function goMorning(){if(S.away)return;var dark=nowM()<sunT()[0]+20,w=E('weather','weather'),o=(w&&!window.LW&&w.attributes.temperature!=null)?+w.attributes.temperature:parseFloat($('wt').textContent);
+ if(dark)['Kitchen','Hallway','Living room'].forEach(function(r){var x=S.rooms[r],e=Lt(r);x.on=true;x.b=40;x.m='';if(e)call('light','turn_on',{entity_id:e,brightness_pct:40,transition:300})});
+ S.alarm=false;var a=E('alarm','alarm_control_panel');if(a)call('alarm_control_panel','alarm_disarm',{entity_id:a.entity_id});
+ var t=o<10?21:20;setT(t);ctp();secR();scR();save();
+ toast('☀️ Good morning · '+(dark?'lights coming up gently (still dark)':'daylight, lights left off')+' · alarm off · climate '+t+'°')}
+function morningChk(){var m=nowM(),w=tm(S.wake||'06:30'),k=ymd(new Date());if(m<w||m>w+90||S.mnRan===k)return;S.mnRan=k;goMorning()}
+$('gear').addEventListener('click',function(){$('wk1').value=S.wake||'06:30';$('nmA').checked=S.nmAuto!==false});
+$('hs').addEventListener('click',function(){if($('wk1').value)S.wake=$('wk1').value;S.nmAuto=$('nmA').checked;save()});
+/* holiday themes switch on by themselves, then go back */
+if(!S.base)S.base=(S.theme==='xmas'||S.theme==='halloween')?'classic':(S.theme||'classic');
+function autoTh(){var mo=new Date().getMonth(),t=S.pickM===mo?S.pickT:mo===9?'halloween':mo===11?'xmas':S.base;if(S.theme!==t)setTh(t)}
+$('tp').addEventListener('click',function(e){var b=e.target.closest('.sw');if(b){var mo=new Date().getMonth();S.pickM=mo;S.pickT=b.dataset.t;if(mo!==9&&mo!==11)S.base=b.dataset.t;save()}});
+/* scenes */
+function lockAll(){S.lock=true;Object.keys(ST).forEach(function(x){if(x.indexOf('lock.')===0&&ST[x].state!=='locked')call('lock','lock',{entity_id:x})})}
+function alm(m){var a=E('alarm','alarm_control_panel');S.alarm=m!=='off';if(a)call('alarm_control_panel',m==='off'?'alarm_disarm':m==='night'?'alarm_arm_night':'alarm_arm_away',{entity_id:a.entity_id})}
+function offAll(){var o={};RN.forEach(function(r){o[r]={on:false,b:50}});return o}
+S.scn=S.scn||{'Good morning':{r:{'Kitchen':{on:true,b:70},'Living room':{on:true,b:60}},t:21,al:'off'},'Leaving':{r:offAll(),t:17,lock:1,al:'arm'},'Movie night':{r:{'Living room':{on:true,b:15},'Kitchen':{on:false,b:50}},t:21},'Bedtime':{r:Object.assign(offAll(),{'Bedroom':{on:true,b:10}}),t:19,lock:1,al:'night'}};
+function scApply(n){var s=S.scn[n];Object.keys(s.r).forEach(function(r){var x=S.rooms[r];x.on=s.r[r].on;x.b=s.r[r].b;x.m='';lset(r)});
+ if(s.t!=null){setT(s.t);ctp()}if(s.lock)lockAll();if(s.al)alm(s.al);secR();scR();save();toast('✨ '+n+' scene on')}
+function scSave(n){var r={};RN.forEach(function(k){r[k]={on:S.rooms[k].on,b:S.rooms[k].b}});S.scn[n]={r:r,t:S.temp,lock:S.lock?1:0,al:S.alarm?'arm':'off'};save();toast('💾 Saved the current setup to '+n)}
+var sce=false;
+function lList(){$('lbody').innerHTML='<h3>Lighting</h3><p class="d">Scenes</p><div class="rl">'+Object.keys(S.scn).map(function(n){return '<button class="tile" data-sc="'+esc(n)+'"><span>'+esc(n)+'</span></button>'}).join('')+'</div><button class="btn" id="sce" style="margin-top:10px">'+(sce?'Now tap a scene to save the current setup to it':'Edit a scene: save current setup')+'</button><p class="d" style="margin-top:14px">Rooms</p><div class="rl">'+RN.map(rt).join('')+'</div><div class="row"><button class="btn" id="lx">Done</button></div>'}
+$('lbody').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
+ if(b.dataset.sc){if(sce){scSave(b.dataset.sc);sce=false;lList()}else{scApply(b.dataset.sc);$('ldlg').close()}}else if(b.id==='sce'){sce=!sce;lList()}});
+/* who's home */
+var wasOut;
+function who(){var p=Object.keys(ST).filter(function(x){return x.indexOf('person.')===0});
+ $('who').innerHTML=p.map(function(x){var s=ST[x],n=s.attributes.friendly_name||x,h=s.state==='home';return '<span class="wh'+(h?' in':'')+'" title="'+esc(n)+(h?' is home':' is away')+'">'+esc(n.charAt(0).toUpperCase())+'</span>'}).join('');
+ if(!p.length)return;var out=p.every(function(x){return ST[x].state!=='home'});
+ if(wasOut!==undefined&&out!==wasOut){if(out&&!S.away){S.away=true;S.autoA=1;goAway()}else if(!out&&S.away&&S.autoA){S.away=false;S.autoA=0;endAway()}}wasOut=out}
+aud();upR();if(C.url&&C.token)conn();nightChk();morningChk();setInterval(morningChk,30000);/* holiday mode: lights look lived in while you're away on a trip */
+function holActive(){var t=new Date(),a=new Date(t.getFullYear(),t.getMonth(),t.getDate()),r=false;
+ Object.keys(S.cal).forEach(function(k){S.cal[k].forEach(function(e){if(!e.hol)return;var n=Math.round((a-new Date(k+'T00:00:00'))/864e5);if(n>=0&&n<e.hol)r=true})});return r}
+function holOn(){return S.away&&holActive()}
+function holPlan(){var s=sunT()[1],j=function(n){return Math.round((Math.random()-.5)*2*n)},k1=s+10+j(15),l1=s+20+j(15);
+ return [[k1,'Kitchen',1,60],[l1,'Living room',1,55],[Math.min(s+40+j(10),1380),'Outdoor',1,35],[Math.max(1230+j(20),k1+45),'Kitchen',0],[Math.max(1290+j(25),l1+30),'Bedroom',1,30],[Math.max(1350+j(20),l1+75),'Living room',0],[1395+j(10),'Bedroom',0],[1410,'Outdoor',0]]}
+function holChk(){if(!holOn())return;var k=ymd(new Date()),m=nowM(),ch=false;if(!S.hol||S.hol.d!==k)S.hol={d:k,ev:holPlan(),done:[]};
+ S.hol.ev.forEach(function(x,i){if(S.hol.done.indexOf(i)>-1||m<x[0])return;S.hol.done.push(i);if(m>x[0]+90)return;var r=S.rooms[x[1]];r.on=!!x[2];if(x[2])r.b=x[3];r.m='';lset(x[1]);ch=true});
+ if(ch)scR();save()}
+/* repeats: weekly / monthly / yearly */
+function recur(e){return e.rp||(e.yr?'y':'')}
+function nxtD(k,e){var r=recur(e),t=ymd(new Date());if(!r||k>=t)return k;var s=new Date(k+'T00:00:00'),n=new Date(),a=new Date(n.getFullYear(),n.getMonth(),n.getDate()),d;
+ if(r==='w'){d=new Date(s);d.setDate(s.getDate()+Math.ceil(Math.round((a-s)/864e5)/7)*7)}
+ else if(r==='m'){d=new Date(a.getFullYear(),a.getMonth(),s.getDate());if(d<a)d=new Date(a.getFullYear(),a.getMonth()+1,s.getDate())}
+ else{d=new Date(a.getFullYear(),s.getMonth(),s.getDate());if(d<a)d=new Date(a.getFullYear()+1,s.getMonth(),s.getDate())}
+ return ymd(d)}
+function occ(k,e,d){var r=recur(e);if(!r||k>=d)return false;var s=new Date(k+'T00:00:00'),x=new Date(d+'T00:00:00');
+ if(r==='w')return Math.round((x-s)/864e5)%7===0;if(r==='m')return s.getDate()===x.getDate();return s.getDate()===x.getDate()&&s.getMonth()===x.getMonth()}
+function all(d){var l=(S.cal[d]||[]).map(function(e,i){return {t:e.t,h:e.h||'',d:d,i:i,big:e.big}});
+ Object.keys(S.cal).forEach(function(k){S.cal[k].forEach(function(e,i){if(occ(k,e,d))l.push({t:e.t,h:e.h||'',d:k,i:i,big:e.big})})});
+ return l.concat(H.filter(function(e){return e.d===d}))}
+function upR(){var t=ymd(new Date()),l=[];
+ Object.keys(S.cal).forEach(function(k){S.cal[k].forEach(function(e){var d=nxtD(k,e);if(d>=t)l.push({d:d,h:e.h||'',t:(e.big?'★ ':'')+e.t})})});
+ H.forEach(function(e){if(e.d>=t)l.push(e)});
+ l.sort(function(a,b){return (a.d+a.h)<(b.d+b.h)?-1:1});
+ $('ev').innerHTML=l.slice(0,3).map(function(e){return '<li><b>'+esc(e.t)+'</b><span>'+lab(e.d,e.h)+'</span></li>'}).join('')||'<li><span>Nothing coming up. Tap to add.</span></li>'}
+function cdItems(){var n=new Date(),a=new Date(n.getFullYear(),n.getMonth(),n.getDate()),t=S.theme,l=[],r=[];
+ if(t==='xmas'||t==='halloween'){var m=t==='xmas'?[11,25]:[9,31],d=new Date(n.getFullYear(),m[0],m[1]);if(d<a)d=new Date(n.getFullYear()+1,m[0],m[1]);var k=Math.round((d-a)/864e5),nm=t==='xmas'?'Christmas':'Halloween';
+  l.push((t==='xmas'?'🎄 ':'🎃 ')+(k===0?'It’s '+nm+' Day!':k+(k===1?' day':' days')+' until '+nm))}
+ Object.keys(S.cal).forEach(function(k){S.cal[k].forEach(function(e){if(!e.big&&recur(e)!=='y')return;var d=nxtD(k,e);if(d<ymd(a))return;var dd=Math.round((new Date(d+'T00:00:00')-a)/864e5);
+  r.push([dd,(dd<=7&&bd(e)?'🎂 ':e.hol?'🏝 ':e.big?'★ ':'')+e.t+' · '+(dd===0?'today!':dd===1?'tomorrow':dd+' days')+(dd<=7&&bd(e)?' 🎉🎈':'')])})});
+ r.sort(function(x,y){return x[0]-y[0]});r.slice(0,4).forEach(function(x){l.push(x[1])});return l}
+function eveChk(){var d=new Date(),k=ymd(d);if(nowM()<1080||S.eveRan===k)return;S.eveRan=k;var t=ymd(new Date(+d+864e5)),l=all(t).filter(function(x){return x.d!==t}).map(function(x){return x.t});if(l.length)toast('📅 Tomorrow: '+l.join(', '))}
+/* weekday / weekend wake-up */
+function wakeT(){var g=new Date().getDay();return tm((g===0||g===6)?(S.wake2||S.wake||'06:30'):(S.wake||'06:30'))}
+function nwin(){var s=sunT(),au=S.nmAuto!==false;return [au?Math.min(1410,Math.max(1260,s[1]+180)):tm(S.nm[0]),au?wakeT():tm(S.nm[1])]}
+function morningChk(){var m=nowM(),w=wakeT(),k=ymd(new Date());if(m<w||m>w+90||S.mnRan===k)return;S.mnRan=k;goMorning()}
+$('gear').addEventListener('click',function(){$('wk2').value=S.wake2||S.wake||'06:30'});
+$('hs').addEventListener('click',function(){if($('wk2').value)S.wake2=$('wk2').value;save()});
+/* arriving home: unlock, porch light if needed, alarm off, then put it all back */
+var arr=null,pv={};
+function frontLock(){var f;for(var x in ST)if(x.indexOf('lock.')===0){if(/front/i.test(ST[x].attributes.friendly_name||x))return x;f=f||x}return f}
+function arrive(test){if(arr)return;var o=S.rooms['Outdoor'],s=sunT(),n=nowM(),dark=n<s[0]||n>s[1]-15,bad=/rain|storm|thunder|fog|drizzle|shower/i.test($('wc').textContent);
+ arr={p:{lock:S.lock,alarm:S.alarm,porch:o.on,porchB:o.b},t:Date.now(),w:test?15000:600000,porch:false,o:0};
+ if(S.lock){S.lock=false;var f=frontLock();if(f)call('lock','unlock',{entity_id:f})}
+ if(dark||bad){arr.porch=true;o.on=true;o.b=Math.max(o.b,70);lset('Outdoor')}
+ if(S.alarm)alm('off');
+ secR();scR();save();toast('🏠 Welcome home · '+(arr.p.lock?'door unlocked · ':'')+(arr.porch?'porch light on · ':'')+(arr.p.alarm?'alarm off':'')+' ')}
+function arrDone(){if(!arr)return;var p=arr.p,o=S.rooms['Outdoor'];
+ if(p.lock){S.lock=true;var f=frontLock();if(f)call('lock','lock',{entity_id:f})}
+ if(arr.porch){o.on=p.porch;o.b=p.porchB;lset('Outdoor')}
+ if(p.alarm){var a=E('alarm','alarm_control_panel');S.alarm=true;if(a)call('alarm_control_panel','alarm_arm_home',{entity_id:a.entity_id})}
+ arr=null;secR();scR();save();toast('🔒 You’re in · door locked again · porch light and alarm back to how they were')}
+$('arb').onclick=function(){$('dlg').close();arrive(1)};
+function who(){var p=Object.keys(ST).filter(function(x){return x.indexOf('person.')===0});
+ $('who').innerHTML=p.map(function(x){var s=ST[x],n=s.attributes.friendly_name||x,h=s.state==='home';return '<span class="wh'+(h?' in':'')+'" title="'+esc(n)+(h?' is home':' is away')+'">'+esc(n.charAt(0).toUpperCase())+'</span>'}).join('');
+ Object.keys(ST).forEach(function(x){if(x.indexOf('binary_sensor.')!==0||!arr)return;var a=ST[x].attributes,dc=a.device_class||'';if(!/door|opening/.test(dc)||!/front|main|entry/i.test(a.friendly_name||x))return;if(ST[x].state==='on')arr.o=1;else if(arr.o)arrDone()});
+ if(!p.length)return;
+ p.forEach(function(x){var h=ST[x].state==='home';if(pv[x]===false&&h)arrive();pv[x]=h});
+ var out=p.every(function(x){return ST[x].state!=='home'});
+ if(wasOut!==undefined&&out!==wasOut){if(out&&!S.away){S.away=true;S.autoA=1;goAway()}else if(!out&&S.away&&S.autoA){S.away=false;S.autoA=0;endAway()}}wasOut=out}
+setInterval(function(){if(arr&&Date.now()-arr.t>arr.w)arrDone()},15000);
+eveChk();setInterval(eveChk,60000);
+autoTh();setInterval(autoTh,3600000);holChk();setInterval(holChk,60000);
 /* fit to screen: shrink the layout so nothing needs scrolling on a landscape iPad */
-function fit(){var wide=matchMedia('(min-width:900px) and (orientation:landscape)').matches;
+function fit(){var wide=matchMedia('(min-width:700px)').matches;
  [].forEach.call(document.querySelectorAll('.grid,.cgrid'),function(g){g.style.transform='';g.style.width='';if(!wide)return;var a=g.parentNode.clientHeight-12,k=1;
   for(var i=0;i<4;i++){var h=g.offsetHeight,nk=Math.min(1,a/h);if(Math.abs(nk-k)<.002)break;k=nk;g.style.transformOrigin='0 0';g.style.transform='scale('+k+')';g.style.width=(100/k)+'%'}})}
 addEventListener('resize',fit);addEventListener('orientationchange',fit);setTimeout(fit,60);setTimeout(fit,600);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
