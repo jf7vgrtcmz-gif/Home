@@ -194,6 +194,9 @@ body{font-family:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Display","Helv
 .cal>div:first-child{padding-bottom:34px}
 .wh{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;font-size:12px;font-weight:600;background:var(--glass2);border:1px solid var(--line);opacity:.45;margin-right:4px;color:var(--ink)}
 .wh.in{opacity:1;background:linear-gradient(160deg,var(--accent),var(--accent2));color:var(--onacc)}
+html.sa{padding-top:max(env(safe-area-inset-top),28px)}
+.btn.sm{padding:6px 12px;font-size:13px}
+.cgrid .cc{height:auto;min-height:150px}
 dialog select{padding:8px;border-radius:12px;border:1px solid var(--track);background:var(--glass2);color:var(--ink);font:16px -apple-system,Arial,sans-serif;margin-left:6px}
 dialog input[type=number]{width:70px;padding:8px;border-radius:12px;border:1px solid var(--track);background:var(--glass2);color:var(--ink);font:16px -apple-system,Arial,sans-serif;margin:10px 6px 0 0}
 @media (min-width:700px){
@@ -263,7 +266,7 @@ dialog textarea{min-height:100px}
 <label>Home Assistant address</label><input type="text" id="hu" placeholder="http://homeassistant.local:8123" autocapitalize="off" autocorrect="off">
 <label>Long-lived access token</label><input type="password" id="ht" autocomplete="off">
 <details><summary style="margin-top:14px;cursor:pointer;color:var(--sub)">Choose devices (blank picks automatically)</summary><div id="he"></div></details>
-<textarea id="hv" hidden></textarea><label class="ck"><input type="checkbox" id="nmA"> Follow the seasons (night mode starts after sunset)</label><label>Wake-up time, weekdays (morning mode)</label><input type="time" id="wk1"><label>Wake-up time, weekends</label><input type="time" id="wk2"><label>Night mode starts (if not following seasons)</label><input type="time" id="nm1"><label>Night mode ends</label><input type="time" id="nm2"><div class="row" style="margin-top:10px"><button class="btn" id="nmb">Run night mode now</button><button class="btn" id="arb">Test arriving home</button></div>
+<textarea id="hv" hidden></textarea><label class="ck"><input type="checkbox" id="nmA"> Follow the seasons (night mode starts after sunset)</label><label>Wake-up time, weekdays (morning mode)</label><input type="time" id="wk1"><label>Wake-up time, weekends</label><input type="time" id="wk2"><label>Night mode starts (if not following seasons)</label><input type="time" id="nm1"><label>Night mode ends</label><input type="time" id="nm2"><div class="row" style="margin-top:10px"><button class="btn" id="nmb">Run night mode now</button><button class="btn" id="arb">Test arriving home</button><button class="btn sm" id="bk">Back up</button><button class="btn sm" id="rs">Restore</button><input type="file" id="rf" accept=".json,application/json" hidden></div>
 <div class="row"><button class="btn p" id="hs">Save &amp; connect</button><button class="btn" id="hd">Disconnect</button><button class="btn" id="hc">Close</button></div></dialog>
 </div>
 
@@ -673,10 +676,15 @@ function who(){var p=Object.keys(ST).filter(function(x){return x.indexOf('person
 setInterval(function(){if(arr&&Date.now()-arr.t>arr.w)arrDone()},15000);
 eveChk();setInterval(eveChk,60000);
 autoTh();setInterval(autoTh,3600000);holChk();setInterval(holChk,60000);
+/* back up / restore */
+$('bk').onclick=function(){var b=new Blob([JSON.stringify(S)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='home-dashboard-backup.json';document.body.appendChild(a);a.click();a.remove();$('dlg').close();toast('💾 Backup saved to your Downloads')};
+$('rs').onclick=function(){$('rf').click()};
+$('rf').onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(typeof d!=='object'||!d)throw 0;Object.keys(S).forEach(function(k){delete S[k]});Object.assign(S,d);save();location.reload()}catch(e){$('dlg').close();toast('That file isn’t a dashboard backup')}};r.readAsText(f)};
+if(navigator.standalone)document.documentElement.classList.add('sa');
 /* fit to screen: shrink the layout so nothing needs scrolling on a landscape iPad */
 function fit(){var wide=matchMedia('(min-width:700px)').matches;
- [].forEach.call(document.querySelectorAll('.grid,.cgrid'),function(g){g.style.transform='';g.style.width='';if(!wide)return;var a=g.parentNode.clientHeight-12,k=1;
-  for(var i=0;i<4;i++){var h=g.offsetHeight,nk=Math.min(1,a/h);if(Math.abs(nk-k)<.002)break;k=nk;g.style.transformOrigin='0 0';g.style.transform='scale('+k+')';g.style.width=(100/k)+'%'}})}
+ [].forEach.call(document.querySelectorAll('.grid,.cgrid'),function(g){g.style.transform='';g.style.width='';g.style.minHeight='';if(!wide)return;var a=g.parentNode.clientHeight-12,k=1;
+  for(var i=0;i<4;i++){var h=g.offsetHeight,nk=Math.min(1,a/h);if(Math.abs(nk-k)<.002)break;k=nk;g.style.transformOrigin='0 0';g.style.transform='scale('+k+')';g.style.width=(100/k)+'%'}g.style.minHeight=(a/k)+'px'})}
 addEventListener('resize',fit);addEventListener('orientationchange',fit);setTimeout(fit,60);setTimeout(fit,600);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
 secR();scR();clR();gR();
 </script>
