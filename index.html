@@ -194,16 +194,18 @@ body{font-family:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Display","Helv
 .cal>div:first-child{padding-bottom:34px}
 .wh{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;font-size:12px;font-weight:600;background:var(--glass2);border:1px solid var(--line);opacity:.45;margin-right:4px;color:var(--ink)}
 .wh.in{opacity:1;background:linear-gradient(160deg,var(--accent),var(--accent2));color:var(--onacc)}
-html.sa{padding-top:max(env(safe-area-inset-top),28px)}
+html.sa{padding-top:max(env(safe-area-inset-top),34px)}
+html:root{padding-top:max(env(safe-area-inset-top),34px)}
 .btn.sm{padding:6px 12px;font-size:13px}
 .cgrid .cc{height:auto;min-height:150px}
 dialog select{padding:8px;border-radius:12px;border:1px solid var(--track);background:var(--glass2);color:var(--ink);font:16px -apple-system,Arial,sans-serif;margin-left:6px}
 dialog input[type=number]{width:70px;padding:8px;border-radius:12px;border:1px solid var(--track);background:var(--glass2);color:var(--ink);font:16px -apple-system,Arial,sans-serif;margin:10px 6px 0 0}
 @media (min-width:700px){
  html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:pan-x}
+ body{padding-top:max(env(safe-area-inset-top),34px);padding-bottom:max(env(safe-area-inset-bottom),10px)}
  #pg{touch-action:pan-x}
  input[type=range]{touch-action:none}
- .wrap{height:100vh;height:100dvh;display:flex;flex-direction:column;padding:8px 16px 10px;max-width:none}
+ .wrap{height:100%;display:flex;flex-direction:column;padding:8px 16px 10px;max-width:none}
  header{padding:0 6px 8px;flex:none}
  #pg{flex:1;min-height:0;padding-bottom:0;overflow-y:hidden}
  .pgp{height:100%;overflow:hidden;padding-bottom:12px}
@@ -262,7 +264,7 @@ dialog textarea{min-height:100px}
     <ul class="ev" id="ev"></ul><button class="rb" id="addev" aria-label="Edit events and calendar" style="position:absolute;bottom:12px;left:18px;width:28px;height:28px;font-size:15px">✎</button></section>
 </main></div><div class="pgp"><div class="cgrid" id="cams"></div></div></div><div id="dots"><i class="on"></i><i></i></div>
 <dialog id="fdlg"><div id="fbody"></div></dialog><dialog id="adlg"><div id="abody"></div></dialog><dialog id="ldlg"><div id="lbody"></div></dialog><dialog id="cdlg"><div id="cbody"></div></dialog>
-<dialog id="dlg"><h3>Settings</h3><div id="hst">Not connected. Showing demo data.</div>
+<dialog id="dlg"><h3>Settings · v14</h3><div id="hst">Not connected. Showing demo data.</div>
 <label>Home Assistant address</label><input type="text" id="hu" placeholder="http://homeassistant.local:8123" autocapitalize="off" autocorrect="off">
 <label>Long-lived access token</label><input type="password" id="ht" autocomplete="off">
 <details><summary style="margin-top:14px;cursor:pointer;color:var(--sub)">Choose devices (blank picks automatically)</summary><div id="he"></div></details>
@@ -690,5 +692,3 @@ secR();scR();clR();gR();
 </script>
 </body>
 </html>
-
- 
