@@ -124,7 +124,7 @@ $('rg').oninput=function(){setT(+this.value)};
 $('gr').onclick=function(){$('hu').value=C.u;$('ht').value=C.t;$('dg').showModal()};
 $('cl').onclick=function(){$('dg').close()};
 $('sv').onclick=function(){C.u=$('hu').value.trim();C.t=$('ht').value.trim();try{localStorage.setItem('ph-ha',JSON.stringify(C))}catch(e){}halt=0;if(C.u&&C.t)conn();else st('Not connected. Showing demo data.')};
-function fit(){[$('app'),$('cams')].forEach(function(a){var av=a.parentNode.clientHeight,k=1;a.style.transform='';a.style.width='';a.style.minHeight='';
+function fit(){if(navigator.standalone&&innerHeight>innerWidth){var H=Math.max(screen.height,innerHeight);document.documentElement.style.height=document.body.style.height=H+'px'}[$('app'),$('cams')].forEach(function(a){var av=a.parentNode.clientHeight,k=1;a.style.transform='';a.style.width='';a.style.minHeight='';
  for(var i=0;i<4;i++){var h=a.offsetHeight,nk=Math.min(1,av/h);if(Math.abs(nk-k)<.002)break;k=nk;a.style.transformOrigin='0 0';a.style.transform='scale('+k+')';a.style.width=(100/k)+'%'}
  a.style.minHeight=(av/k)+'px'})}
 addEventListener('resize',fit);addEventListener('orientationchange',fit);
